@@ -5,7 +5,7 @@ import copy
 const_b = math.sqrt(2)  # constant in UCT
 M = 1000  # values for nodes that have not been visited
 threshold = 1  # threshold of visiting nodes before expanding
-max_depth = 10  # depths when nodes are leaves
+max_depth = 50  # depths when nodes are leaves, for FourConnect should be at least the size of gmaeboard: 7x6 =
 
 # dictionary that tracks state - node
 state_nodes = {}
@@ -47,6 +47,7 @@ class Node:
             scores.append(score)
 
         print("Calculating Scores", scores)
+        print("List of Moves", self.children)
 
         to_explore = randargmax(np.array(scores))
         selected_child = scored_nodes[to_explore]
@@ -59,15 +60,14 @@ class Node:
         print("path so far", path)
         rolling_path_length = len(path)
 
-        # updating the current environment state to the one of the current child
-
         state = state
         just_played = 3 - copy.copy(player) # making sure the rollout starts with the other player's move
 
         if rolling_path_length == max_depth:
-            reward = path[-2].children[path][-1][1]
+            return path[-2].children[path][-1][1]
         else:
-            while rolling_path_length <= max_depth:
+            while rolling_path_length <= max_depth and env.is_terminal(state, 3 - just_played) is False:
+                # have to check for 3 - just_played because I've already updated player at end of loop
 
                 move = np.random.choice(env.get_moves(state))
                 state = env.do_move(state, move, just_played)
@@ -75,8 +75,7 @@ class Node:
                 rolling_path_length += 1
 
             # Reward needs to be for actual player not the one who just made a move in the rollout
-            reward = env.get_reward(state, player)
-        return reward
+        return env.get_reward(state, player)
 
 
 def expand(node, state, game, player):  # TODO: Should this be in node?
@@ -88,7 +87,7 @@ def expand(node, state, game, player):  # TODO: Should this be in node?
         print("Chosen Move", m)
         # evaluate move and retrieve new state
         new_state = game.do_move(state, m, player)
-        print("New State in Tree Search - Expansion", new_state)
+        print("New State in Tree Search - Expansion \n", new_state)
 
         # check whether state already has an existing node
         if new_state not in state_nodes:
@@ -97,7 +96,6 @@ def expand(node, state, game, player):  # TODO: Should this be in node?
 
         # add move that led to expanded node to current node as child
         node.children[m] = [0, 0]
-        # remove move from untried moves
         node.untried_moves.remove(m)
         print("Current Nodes untried moves", node.untried_moves)
         node.is_expanded = True
@@ -105,7 +103,7 @@ def expand(node, state, game, player):  # TODO: Should this be in node?
 
 
 def tree_search(game, budget, start_state, player):
-    print("Start State in Tree Search", start_state)
+    print("Start State in Tree Search \n", start_state)
     root = Node(start_state, env=game)
     state_nodes[start_state] = root
 
@@ -135,7 +133,7 @@ def tree_search(game, budget, start_state, player):
                 break
 
         # calculate reward or rollout
-        if len(path) >= max_depth:
+        if len(path) >= max_depth or game.is_terminal(current_state, player):
             reward = game.get_reward(current_state, player)
         else:
             reward = current_node.rollout(game, current_state, path, player)
