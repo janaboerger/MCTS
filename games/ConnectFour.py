@@ -40,7 +40,7 @@ class State:
         return (self.__board == other.__board).all()
 
     def __repr__(self):
-        return "Game State={}".format(self.__board)
+        return "Game Board \n {}".format(self.__board)
 
     def get_board(self):
         return np.copy(self.__board)
@@ -55,17 +55,15 @@ class ConnectFour:
         print("Doing Move")
         # look at current state, make move and return new state
         board = state.get_board()
-        print("New Game State BEFORE making move", board)
+        print("New Game State BEFORE making move \n", board)
 
         # looping through columns that player wants to play starting with bottom slot
         for i in range(len(board[:, move][::-1])):
-            # print("i", i)
             if board[:, move][::-1][i] == 0:
-                # print("Stop")
                 board[:, move][::-1][i] = player
                 break
         new_board = board
-        print("New Game State after making move", new_board)
+        print("New Game State after making move \n", new_board)
 
         return State(new_board)
 
@@ -74,28 +72,36 @@ class ConnectFour:
         print("Getting Moves")
         # check what columns have not been filled up yet
         board = state.get_board()
+        print("Possible Moves", list(np.where(board[0] == 0)[0]))
         return list(np.where(board[0] == 0)[0])
 
-    # returns reward based on the current state
+
     @staticmethod
     def get_reward(state, player):
+        # returns reward based on the current state
         print("Getting Reward")
         # return 1 for win, -1 for loss, 0 for tie
         board = state.get_board()
-        reward = -1
+        opponent = 3 - player
 
-        winner = four_check(board, player) \
-                 or four_check(board.T, player) \
-                 or four_check(negative_diagonals(board), player) \
-                 or four_check(positive_diagonals(board), player)
+        # it's ok to check in that order since if p1 has 4 in a row p2 should not be able to do so
+        if four_check(board, player) \
+        or four_check(board.T, player) \
+        or four_check(negative_diagonals(board), player) \
+        or four_check(positive_diagonals(board), player):
+            return 1  # winner
 
-        if winner:
-            reward = 1
-        # TODO: include case of tie
-        return reward
+        elif four_check(board, opponent) \
+        or four_check(board.T, opponent) \
+        or four_check(negative_diagonals(board), opponent) \
+        or four_check(positive_diagonals(board), opponent):
+            return -1  # looser
+
+        else:
+            return 0
 
     @staticmethod
-    def is_terminal(state, player): # board = state
+    def is_terminal(state, player):
         # row check, col check, diagonal down, diagonal up
 
         board = state.get_board()
@@ -103,6 +109,5 @@ class ConnectFour:
         return four_check(board, player) \
                or four_check(board.T, player) \
                or four_check(negative_diagonals(board), player) \
-               or four_check(positive_diagonals(board), player)
-        # TODO: or terminal because no moves left --> tie
-
+               or four_check(positive_diagonals(board), player) or \
+               not ConnectFour.get_moves(state)  # check if moves left | if not: tie
